@@ -33,6 +33,7 @@ public class Settings extends JDialog {
         } catch (Exception exc) {
             System.out.println("Error writing config file");
         }
+        ffdf
     }
 
     public boolean isAutoLoad(){return autoLoadSettings.isSelected();};
