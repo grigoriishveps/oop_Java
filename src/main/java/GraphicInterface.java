@@ -1,8 +1,19 @@
-import org.w3c.dom.*;
+
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
-import javax.swing.table.TableRowSorter;
+import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -11,7 +22,9 @@ import javax.xml.parsers.*;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 import java.util.stream.Collectors;
+
 
 public class GraphicInterface extends JDialog {
     private JFrame bookList;
@@ -27,7 +40,7 @@ public class GraphicInterface extends JDialog {
     private TableRowSorter<TableModel> sorter;
     private JMenu menu;
     private JMenuBar menuBar;
-    private JMenuItem menuItemNew, menuItemSave, menuItemLoad,menuItemSettings, menuItemExit;
+    private JMenuItem menuItemNew, menuItemSave, menuItemLoad, menuItemSettings, menuItemExit;
     private static String[] typeField = {"fam", "data", "logic"};
     private File configFile;
     private Settings configDialog;
@@ -45,12 +58,13 @@ public class GraphicInterface extends JDialog {
             System.out.println("Error reading file");
         }
     }
+
     public void saveFile(DefaultTableModel table, String fileName) throws Exception {
 
 
         File file = new File(fileName);
 
-        boolean flag = false, flagEnter = false;
+         boolean flag = false, flagEnter = false;
         try (PrintWriter printFile = new PrintWriter(file)) {
 
             for (Vector<String> rowVector : table.getDataVector()) {
@@ -73,11 +87,12 @@ public class GraphicInterface extends JDialog {
             System.out.println("Error writing file");
         }
     }
+
     private static void checkField(String field, String type) throws Exception {
         if ("".equals(field) && !"empty".equals(type)) {
             throw new EmptyFieldException(field);
         } else if ("data".equals(type) && !field.matches("(\\d\\d|\\d)\\.(1[0-2]|0[1-9]|\\*\\*)\\.\\d{4}")) {
-            throw new FormatFilterException();
+            throw new FormatFilterException ();
         } else if ("logic".equals(type) && (!"Да".equals(field) && !"Нет".equals(field))) {
             throw new FormatFilterException();
         }
@@ -87,9 +102,9 @@ public class GraphicInterface extends JDialog {
         checkField(field, "empty");
     }
 
-    private void createXML(String fileName) throws Exception{
+    private File createXML(String fileName) throws Exception {
         //try {
-        DocumentBuilder builder =DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         Document doc = builder.newDocument();
         //} catch (ParserConfigurationException e) { e.printStackTrace(); }
         Node pochta = doc.createElement("listPeople");
@@ -98,16 +113,17 @@ public class GraphicInterface extends JDialog {
             Element human = doc.createElement("human");
             pochta.appendChild(human);
             human.setAttribute("ФИО", (String) model.getValueAt(i, 0));
-            human.setAttribute("data", (String)model.getValueAt(i, 1));
-            human.setAttribute("letter", (String)model.getValueAt(i, 2));
+            human.setAttribute("data", (String) model.getValueAt(i, 1));
+            human.setAttribute("letter", (String) model.getValueAt(i, 2));
         }
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
         File fileXML = new File(fileName);
         transformer.transform(new DOMSource(doc), new StreamResult(fileXML));
         //fileXML.createNewFile();
-
+        return fileXML;
     }
-    private void loadXML(String fileName) throws Exception{
+
+    private void loadXML(String fileName) throws Exception {
 
         DocumentBuilder dBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         Document doc = dBuilder.parse(new File(fileName));
@@ -126,10 +142,57 @@ public class GraphicInterface extends JDialog {
 
     }
 
+    private void createPdf(String fileName) throws Exception {
+        com.itextpdf.text.Document document = new com.itextpdf.text.Document(PageSize.A4, 50, 50, 50, 50);
+
+        PdfPTable t = new PdfPTable(3);
+        PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(fileName));
+
+        BaseFont baseFont = BaseFont.createFont("C:\\Windows\\Fonts\\Calibri.ttf", "CP1251", BaseFont.EMBEDDED);
+        com.itextpdf.text.Font font1 = new com.itextpdf.text.Font(baseFont, 10, com.itextpdf.text.Font.NORMAL, com.itextpdf.text.BaseColor.BLACK);
+        com.itextpdf.text.Font font2 = new com.itextpdf.text.Font(baseFont, 12, com.itextpdf.text.Font.BOLD, com.itextpdf.text.BaseColor.BLACK);
+
+        t.addCell(new PdfPCell(new Phrase("ФИО", font2)));
+        t.addCell(new PdfPCell(new Phrase("Дата рождения", font2)));
+        t.addCell(new PdfPCell(new Phrase("Письмо", font2)));
+
+        for (int i = 0; i < model.getRowCount(); i++) {
+            t.addCell((new Phrase((String) model.getValueAt(i, 0), font1)));
+            t.addCell((new Phrase((String) model.getValueAt(i, 1), font1)));
+            t.addCell((new Phrase((String) model.getValueAt(i, 2), font1)));
+        }
+
+        document.open();
+
+        Paragraph paragraph = new Paragraph("Отчет", font2);
+        paragraph.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+        paragraph.setSpacingAfter(20);
+
+        document.add(paragraph);
+        document.add(t);
+
+        document.close();
+    }
+
+    private void createHTML(String fileName) throws Exception {
+
+            PrintWriter pw = new PrintWriter(new FileWriter(fileName));
+            // Добавить заголовок
+            pw.println("<TABLE BORDER><TR><TH>ФИО<TH>Дата рождения<TH>Наличие письма</TR>");
+            for (int i = 0; i < model.getRowCount(); i++) {
+                int square = i * i;
+                pw.println("<TR><TD>" + (String) model.getValueAt(i, 0)
+                        + "<TD>" + (String) model.getValueAt(i, 1)
+                        + "<TD>" + (String) model.getValueAt(i, 2));
+            }
+            pw.println("</TABLE>");
+            pw.close();
+    }
+
     private void InitWindow() {
 
         bookList = new JFrame("Почта");
-        bookList.setSize(500, 300);
+        bookList.setSize(500, 600);
         bookList.setLocation(100, 100);
         bookList.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         //bookList.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -157,17 +220,16 @@ public class GraphicInterface extends JDialog {
 
             @Override
             public void windowClosing(WindowEvent event) {
-                Object[] options = { "Да", "Нет!" };
+                Object[] options = {"Да", "Нет!"};
                 int n = JOptionPane
                         .showOptionDialog(event.getWindow(), "Закрыть окно?",
                                 "Подтверждение", JOptionPane.YES_NO_OPTION,
                                 JOptionPane.QUESTION_MESSAGE, null, options,
                                 options[0]);
-                try{
+                try {
                     //saveFile(model);\
                     configDialog.SaveSettings();
-                }
-                catch(Exception exc){
+                } catch (Exception exc) {
                     System.out.println("что-то плохо читает");
                 }
                 System.out.println("Сохранено");
@@ -216,36 +278,36 @@ public class GraphicInterface extends JDialog {
         configDialog = new Settings(configFile, bookList);
 
         {
-        menuBar = new JMenuBar();
-        menu = new JMenu("Menu");
-        menuItemNew = new JMenuItem("Новая Таблица");
-        menuItemNew.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                model.getDataVector().removeAllElements();
-                model.fireTableDataChanged();
-            }
-        });
-        menuItemSave = new JMenuItem("Сохранить");
-        menuItemSave.addActionListener(e -> loadBase.doClick());
-        menuItemLoad = new JMenuItem("Загрузить");
-        menuItemLoad.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                loadBase.doClick();
-            }
-        });
+            menuBar = new JMenuBar();
+            menu = new JMenu("Menu");
+            menuItemNew = new JMenuItem("Новая Таблица");
+            menuItemNew.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    model.getDataVector().removeAllElements();
+                    model.fireTableDataChanged();
+                }
+            });
+            menuItemSave = new JMenuItem("Сохранить");
+            menuItemSave.addActionListener(e -> loadBase.doClick());
+            menuItemLoad = new JMenuItem("Загрузить");
+            menuItemLoad.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    loadBase.doClick();
+                }
+            });
 
-        menuItemSettings = new JMenuItem("Настройки");
-        menuItemSettings.addActionListener((e)->configDialog.setVisible(true));
-        menuItemExit = new JMenuItem("Выход");
+            menuItemSettings = new JMenuItem("Настройки");
+            menuItemSettings.addActionListener((e) -> configDialog.setVisible(true));
+            menuItemExit = new JMenuItem("Выход");
 
-        menuItemExit.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.exit(0);
-            }
-        });
+            menuItemExit.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    System.exit(0);
+                }
+            });
         }// Создание меню кнопок
 
         // Создание кнопок и прикрепление иконок
@@ -263,7 +325,7 @@ public class GraphicInterface extends JDialog {
                         fileDialog.setVisible(true);
                         String fileName = fileDialog.getDirectory() + fileDialog.getFile();
                         System.out.println(fileName);
-                        Object[] options = { "Да", "Нет!" };
+                        Object[] options = {"Да", "Нет!"};
                         int n = JOptionPane
                                 .showOptionDialog(bookList, "Использовать XML формат?",
                                         "Подтверждение", JOptionPane.YES_NO_OPTION,
@@ -293,7 +355,7 @@ public class GraphicInterface extends JDialog {
                         fileDialog.setDirectory(".\\resources");
                         fileDialog.setVisible(true);
                         String fileName = fileDialog.getDirectory() + fileDialog.getFile();
-                        Object[] options = { "Да", "Нет!" };
+                        Object[] options = {"Да", "Нет!"};
                         int n = JOptionPane
                                 .showOptionDialog(bookList, "Использовать XML формат?",
                                         "Подтверждение", JOptionPane.YES_NO_OPTION,
@@ -370,12 +432,12 @@ public class GraphicInterface extends JDialog {
 
 
                     int[] arrayRowsForDelete = books.getSelectedRows();
-                    for (int i = arrayRowsForDelete.length-1;i>=0;i--)
+                    for (int i = arrayRowsForDelete.length - 1; i >= 0; i--)
                         //books.remove(arrayRowsForDelete[i]);
                         model.removeRow(arrayRowsForDelete[i]);
                     JOptionPane.showMessageDialog(bookList, "Строки удалены");
 
-                   // System.out.println(res);
+                    // System.out.println(res);
                 }
             });
         } // Кнопка удаления информации
@@ -385,17 +447,27 @@ public class GraphicInterface extends JDialog {
         } // Кнопка поиска
         {
             printButton = new JButton(new ImageIcon("./resources/print_7018.png"));
-            printButton.setToolTipText("Не думаю, что эта кнопка что-то сделает :3");
+            printButton.setToolTipText("Выдать отчет");
             printButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                   /* try {
-                        createXML();
-                    }
-                    catch (Exception exc) {
+                    Object[] options = {"PDF", "HTML!"};
+                    int n = JOptionPane
+                            .showOptionDialog(bookList, "Какой тип отчета?",
+                                    "Подтверждение", JOptionPane.YES_NO_OPTION,
+                                    JOptionPane.QUESTION_MESSAGE, null, options,
+                                    options[0]);
+
+                    try {
+                        if (n == 0)
+                            createPdf(".\\resources\\PdfDataLibraryf.pdf");
+                        else
+                            createHTML(".\\resources\\PdfDataLibraryf.pdf");
+                    } catch (Exception exc) {
                         System.out.println("Создание не вышло");
                         System.out.println(exc.getMessage());
-                    }*/
+                    }
+
                     JOptionPane.showMessageDialog(bookList, "Хаха))Принтера нет ! А если и есть не заработает)");
                 }
             });
@@ -505,8 +577,7 @@ public class GraphicInterface extends JDialog {
         try {
             if (configDialog.isAutoLoad())
                 loadFile(model, "D:\\данные с флешки\\oop1\\resources\\inFile");
-        }
-        catch (Exception exc){
+        } catch (Exception exc) {
             System.out.println("Выгрузка информации не вышла");
         }
 
@@ -518,14 +589,6 @@ public class GraphicInterface extends JDialog {
         } catch (Exception exc) {
             System.out.println("что-то плохо читает");
         }*/
-
-
-
-
-
-
-
-
 
 
         bookList.setVisible(true);
