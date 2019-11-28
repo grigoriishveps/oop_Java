@@ -1,4 +1,4 @@
-
+package laba;
 import com.itextpdf.text.PageSize;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public class GraphicInterface extends JDialog {
     private JFrame bookList;
     private DefaultTableModel model;
-    private JButton saveBase, loadBase, filterButton, setInfo, searchInfo, printButton, deleteButton, cancelFilterButton;
+    private JButton saveBase, loadBase, filterButton, setInfo, searchInfo, printButton, deleteButton, cancelFilterButton,exButton;
     private JToolBar toolBar;
     private JScrollPane scroll_tab1, scroll;
     private JTable books;
@@ -45,6 +45,68 @@ public class GraphicInterface extends JDialog {
     private File configFile;
     private Settings configDialog;
 
+
+    private Object lock = new Object();
+    class MyThread1 extends Thread{
+        private int type;
+        public MyThread1(String name) {super(name);}
+
+        public void run() {
+            synchronized (lock) {
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Таблица заполняется");
+                try {
+                    loadBase.doClick();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+
+            }}}
+    class MyThread2 extends Thread{
+        public MyThread2(String name) {super(name);}
+        public void run() {
+
+            synchronized (lock) {
+                lock.notifyAll();
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Новые данные вводятся");
+                for (int i = 0; i <100; i++)
+                    model.addRow(new String[] {"Гаршин В. М.","Денщик и офицер","1684","Да"} );
+                lock.notifyAll();
+
+            }
+        }
+    }
+    class MyThread3 extends Thread{
+        public MyThread3(String name) {super(name);}
+
+        public void run() {
+            synchronized (lock) {
+                lock.notifyAll();
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("pdf формируется");
+                try {
+                    createPdf(".\\resources\\PdfDataLibraryf.pdf");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+    }
+    /**/
 
     private void loadFile(DefaultTableModel table, String fileName) throws Exception {
 
@@ -88,7 +150,7 @@ public class GraphicInterface extends JDialog {
         }
     }
 
-    private static void checkField(String field, String type) throws Exception {
+    public static void checkField(String field, String type) throws Exception {
         if ("".equals(field) && !"empty".equals(type)) {
             throw new EmptyFieldException(field);
         } else if ("data".equals(type) && !field.matches("(\\d\\d|\\d)\\.(1[0-2]|0[1-9]|\\*\\*)\\.\\d{4}")) {
@@ -444,6 +506,15 @@ public class GraphicInterface extends JDialog {
         {
             searchInfo = new JButton(new ImageIcon("./resources/search_5588.png"));
             searchInfo.setToolTipText("Просмотреть и найти информацию");
+            searchInfo.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    new MyThread1("11").start();
+                    new MyThread2("22").start();
+                    new MyThread3("33").start();
+                }
+            });
+
         } // Кнопка поиска
         {
             printButton = new JButton(new ImageIcon("./resources/print_7018.png"));

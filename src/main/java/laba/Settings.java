@@ -1,3 +1,4 @@
+package laba;
 import org.w3c.dom.Node;
 
 import javax.swing.*;
@@ -16,6 +17,7 @@ public class Settings extends JDialog {
     private JButton buttonCancel;
     private JCheckBox autoLoadSettings;
     private File configFile;
+
 
     public void LoadSettings(){
         //System.out.println(configFile.exists() ? "Yes" : "No");
